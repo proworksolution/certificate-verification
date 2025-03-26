@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Certificate Verification</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; }
+        #result { margin-top: 20px; padding: 15px; border: 1px solid #ddd; }
+        #qrcode { margin-top: 20px; text-align: center; }
+    </style>
+</head>
+<body>
+    <h1>Certificate Verification</h1>
+    <input type="text" id="certificateId" placeholder="Enter Certificate ID">
+    <button onclick="verifyCertificate()">Verify</button>
+    <div id="result"></div>
+    <div id="qrcode"></div>
+
+    <script>
+        const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS4A8VWUtiMndDibo5p975byPRuFAwFx57u_7LdMwfcMcVfNQsK9xb2wZLICjzssrFZJkEXlz8V4FWX/pub?output=csv';
+
+        async function verifyCertificate() {
+            const certificateId = document.getElementById('certificateId').value;
+            const resultDiv = document.getElementById('result');
+            const qrcodeDiv = document.getElementById('qrcode');
+
+            try {
+                const response = await fetch(SHEET_URL);
+                const csvData = await response.text();
+                const certificates = parseCSV(csvData);
+
+                const certificate = certificates.find(cert => cert.certificateId === certificateId);
+
+                if (certificate) {
+                    resultDiv.innerHTML = `
+                        <h3>Certificate Verified ✓</h3>
+                        <p><strong>Name:</strong> ${certificate.recipientName}</p>
+                        <p><strong>Course:</strong> ${certificate.courseTitle}</p>
+                        <p><strong>Issue Date:</strong> ${certificate.issueDate}</p>
+                        <p><strong>Institution:</strong> ${certificate.institution}</p>
+                    `;
+                    generateQRCode(window.location.href + `?id=${certificateId}`);
+                } else {
+                    resultDiv.innerHTML = '<h3>Invalid Certificate ✗</h3>';
+                    qrcodeDiv.innerHTML = '';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = 'Error verifying certificate';
+            }
+        }
+
+        function parseCSV(csv) {
+            const lines = csv.split('\n');
+            const headers = lines[0].split(',');
+            return lines.slice(1).map(line => {
+                const values = line.split(',');
+                return headers.reduce((obj, header, index) => {
+                    obj[header] = values[index];
+                    return obj;
+                }, {});
+            });
+        }
+
+        function generateQRCode(url) {
+            const qrcodeDiv = document.getElementById('qrcode');
+            qrcodeDiv.innerHTML = '';
+            const qrcode = new QRCode(qrcodeDiv, {
+                text: url,
+                width: 128,
+                height: 128
+            });
+        }
+    </script>
+</body>
+</html>
